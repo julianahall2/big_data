@@ -1,6 +1,8 @@
 package ap1.bigdata.controller;
 
 import ap1.bigdata.model.Cliente;
+import ap1.bigdata.model.Endereco;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -87,4 +89,69 @@ public class ClienteController {
         this.clienteRepository.delete(clienteOpt.get());
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
+
+    @PostMapping("{id}/enderecos")
+public ResponseEntity<Object> addEndereco(@PathVariable("id") int id, @Valid @RequestBody Endereco endereco) {
+    Optional<Cliente> clienteOpt = this.clienteRepository.findById(id);
+
+    if (clienteOpt.isEmpty()) {
+        return new ResponseEntity<>("Cliente não encontrado", HttpStatus.NOT_FOUND);
+    }
+
+    Cliente cliente = clienteOpt.get();
+    cliente.associarEndereco(endereco);
+    this.clienteRepository.save(cliente);
+
+    return new ResponseEntity<>(cliente, HttpStatus.OK);
+}
+@PutMapping("{id}/enderecos/{enderecoId}")
+public ResponseEntity<Object> updateEndereco(@PathVariable("id") int id, 
+                                             @PathVariable("enderecoId") int enderecoId,
+                                             @Valid @RequestBody Endereco enderecoAtualizado) {
+    Optional<Cliente> clienteOpt = this.clienteRepository.findById(id);
+
+    if (clienteOpt.isEmpty()) {
+        return new ResponseEntity<>("Cliente não encontrado", HttpStatus.NOT_FOUND);
+    }
+
+    Cliente cliente = clienteOpt.get();
+    Optional<Endereco> enderecoOpt = cliente.getEnderecos().stream()
+                                            .filter(e -> e.getId() == enderecoId)
+                                            .findFirst();
+
+    if (enderecoOpt.isEmpty()) {
+        return new ResponseEntity<>("Endereço não encontrado", HttpStatus.NOT_FOUND);
+    }
+
+    Endereco endereco = enderecoOpt.get();
+    endereco.setRua(enderecoAtualizado.getRua());
+    endereco.setNumero(enderecoAtualizado.getNumero());
+    endereco.setBairro(enderecoAtualizado.getBairro());
+    endereco.setCidade(enderecoAtualizado.getCidade());
+    endereco.setEstado(enderecoAtualizado.getEstado());
+    endereco.setCep(enderecoAtualizado.getCep());
+
+    this.clienteRepository.save(cliente);
+
+    return new ResponseEntity<>(cliente, HttpStatus.OK);
+}
+@DeleteMapping("{id}/enderecos/{enderecoId}")
+public ResponseEntity<Object> removeEndereco(@PathVariable("id") int id, @PathVariable("enderecoId") int enderecoId) {
+    Optional<Cliente> clienteOpt = this.clienteRepository.findById(id);
+
+    if (clienteOpt.isEmpty()) {
+        return new ResponseEntity<>("Cliente não encontrado", HttpStatus.NOT_FOUND);
+    }
+
+    Cliente cliente = clienteOpt.get();
+    boolean removed = cliente.getEnderecos().removeIf(endereco -> endereco.getId() == enderecoId);
+
+    if (!removed) {
+        return new ResponseEntity<>("Endereço não encontrado", HttpStatus.NOT_FOUND);
+    }
+
+    this.clienteRepository.save(cliente);
+    return new ResponseEntity<>(cliente, HttpStatus.OK);
+}
+
 }
