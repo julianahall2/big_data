@@ -1,157 +1,102 @@
 package ap1.bigdata.controller;
 
+import ap1.bigdata.controller.dto.AtualizarClienteRequest;
+import ap1.bigdata.controller.dto.EnderecoRequest;
+import ap1.bigdata.controller.dto.IncluirClienteRequest;
+import ap1.bigdata.controller.dto.IncluirClienteResponse;
 import ap1.bigdata.model.Cliente;
 import ap1.bigdata.model.Endereco;
+import ap1.bigdata.service.ClienteService;
 
-import java.util.List;
-import java.util.Optional;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
-
-import ap1.bigdata.repository.ClienteRepository;
-import jakarta.validation.Valid;
+import java.time.Instant;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/cliente")
+@RequestMapping("cliente")
 public class ClienteController {
-    
-    @Autowired
-    private ClienteRepository clienteRepository;
 
-    // Busca todos os clientes
+    private final ClienteService clienteService;
+
+    public ClienteController(ClienteService clienteService) {
+        this.clienteService = clienteService;
+    }
+
     @GetMapping
-    public ResponseEntity<List<Cliente>> getAll() {
-        return new ResponseEntity<>(clienteRepository.findAll(), HttpStatus.OK);
+    public ResponseEntity<List<Cliente>> listar() {
+        return new ResponseEntity<>(clienteService.listar(), HttpStatus.OK);
     }
 
-    // Busca um cliente por ID
-    @GetMapping("{id}")
-    public ResponseEntity<Cliente> getById(@PathVariable("id") int id) {
-        return this.clienteRepository.findById(id)
-                                     .map(cliente -> new ResponseEntity<>(cliente, HttpStatus.OK))
-                                     .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    @GetMapping("/{id}")
+    public ResponseEntity<Cliente> ler(@PathVariable("id") int id) {
+        return new ResponseEntity<>(clienteService.getCliente(id), HttpStatus.OK);
+    }
+ @PostMapping
+public ResponseEntity<IncluirClienteResponse> incluir(@RequestBody IncluirClienteRequest incluirClienteRequest) {
+    List<Endereco> enderecos = incluirClienteRequest.getEnderecos().stream().map(enderecoRequest -> {
+        Endereco endereco = new Endereco();
+        endereco.setRua(enderecoRequest.getRua());
+        endereco.setNumero(enderecoRequest.getNumero()); 
+        endereco.setBairro(enderecoRequest.getBairro()); 
+        endereco.setCidade(enderecoRequest.getCidade());
+        endereco.setEstado(enderecoRequest.getEstado());
+        endereco.setCep(enderecoRequest.getCep());
+        return endereco;
+    }).collect(Collectors.toList());
+    
+    Cliente cliente = new Cliente(
+        incluirClienteRequest.getNome(),
+        incluirClienteRequest.getCpf(),
+        incluirClienteRequest.getEmail(),
+        incluirClienteRequest.getDataNasc(),
+        incluirClienteRequest.getTelefone(),
+        enderecos
+    );
+    
+    clienteService.incluir(cliente);
+    
+    IncluirClienteResponse response = new IncluirClienteResponse();
+    response.setId(cliente.getId());
+    response.setNome(cliente.getNome());
+    response.setTelefone(cliente.getTelefone());
+    response.setCpf(cliente.getCpf());
+    response.setEmail(cliente.getEmail());
+    response.setDataNasc(cliente.getDataNasc());
+    response.setEnderecos(converterEnderecos(cliente.getEnderecos()));
+    response.setDataCadastro(Instant.now());
+    response.setUltimaAtualizacao(Instant.now());
+    
+    return ResponseEntity.ok(response);
+}
+
+private List<EnderecoRequest> converterEnderecos(List<Endereco> enderecos) {
+    return enderecos.stream().map(endereco -> {
+        EnderecoRequest enderecoRequest = new EnderecoRequest();
+        enderecoRequest.setRua(endereco.getRua());
+        enderecoRequest.setNumero(endereco.getNumero());
+        enderecoRequest.setBairro(endereco.getBairro());
+        enderecoRequest.setCidade(endereco.getCidade());
+        enderecoRequest.setEstado(endereco.getEstado());
+        enderecoRequest.setCep(endereco.getCep());
+        return enderecoRequest;
+    }).collect(Collectors.toList());
+}
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Cliente> atualizar(@PathVariable("id") int id, @RequestBody AtualizarClienteRequest atualizarClienteRequest) {
+        Cliente clienteAtualizado = clienteService.atualizar(id, atualizarClienteRequest);
+        return new ResponseEntity<>(clienteAtualizado, HttpStatus.OK);
     }
 
-    // Cria um novo cliente
-    @PostMapping
-    public ResponseEntity<Object> create(@Valid @RequestBody Cliente cliente) {
-        // Verifica se o CPF já está cadastrado
-        if (clienteRepository.existsByCpf(cliente.getCpf())) {
-            return new ResponseEntity<>("CPF já cadastrado", HttpStatus.BAD_REQUEST);
-        }
 
-        // Verifica se o e-mail já está cadastrado
-        if (clienteRepository.existsByEmail(cliente.getEmail())) {
-            return new ResponseEntity<>("E-mail já cadastrado", HttpStatus.BAD_REQUEST);
-        }
-
-        // Salva o cliente se não houver duplicidade
-        this.clienteRepository.save(cliente);
-        return new ResponseEntity<>(cliente, HttpStatus.CREATED);
-    }
-
-    // Atualiza um cliente existente
-    @PutMapping("{id}")
-    public ResponseEntity<Cliente> update(@PathVariable("id") int id, @Valid @RequestBody Cliente clienteAtualizado) {
-        return this.clienteRepository.findById(id)
-                                     .map(cliente -> {
-                                         cliente.setNome(clienteAtualizado.getNome());
-                                         cliente.setCpf(clienteAtualizado.getCpf());
-                                         cliente.setEmail(clienteAtualizado.getEmail());
-                                         cliente.setDataNasc(clienteAtualizado.getDataNasc());
-                                         cliente.setTelefone(clienteAtualizado.getTelefone());
-                                         clienteRepository.save(cliente);
-                                         return new ResponseEntity<>(cliente, HttpStatus.OK);
-                                     })
-                                     .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
-    }
-
-    // Deleta um cliente por ID
-    @DeleteMapping("{id}")
-    public ResponseEntity<Void> delete(@PathVariable("id") int id) {
-        Optional<Cliente> clienteOpt = this.clienteRepository.findById(id);
-
-        if (clienteOpt.isEmpty()) {
-            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-        }
-
-        this.clienteRepository.delete(clienteOpt.get());
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deletar(@PathVariable("id") int id) {
+        clienteService.deletar(id);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
-
-    @PostMapping("{id}/enderecos")
-public ResponseEntity<Object> addEndereco(@PathVariable("id") int id, @Valid @RequestBody Endereco endereco) {
-    Optional<Cliente> clienteOpt = this.clienteRepository.findById(id);
-
-    if (clienteOpt.isEmpty()) {
-        return new ResponseEntity<>("Cliente não encontrado", HttpStatus.NOT_FOUND);
-    }
-
-    Cliente cliente = clienteOpt.get();
-    cliente.associarEndereco(endereco);
-    this.clienteRepository.save(cliente);
-
-    return new ResponseEntity<>(cliente, HttpStatus.OK);
-}
-@PutMapping("{id}/enderecos/{enderecoId}")
-public ResponseEntity<Object> updateEndereco(@PathVariable("id") int id, 
-                                             @PathVariable("enderecoId") int enderecoId,
-                                             @Valid @RequestBody Endereco enderecoAtualizado) {
-    Optional<Cliente> clienteOpt = this.clienteRepository.findById(id);
-
-    if (clienteOpt.isEmpty()) {
-        return new ResponseEntity<>("Cliente não encontrado", HttpStatus.NOT_FOUND);
-    }
-
-    Cliente cliente = clienteOpt.get();
-    Optional<Endereco> enderecoOpt = cliente.getEnderecos().stream()
-                                            .filter(e -> e.getId() == enderecoId)
-                                            .findFirst();
-
-    if (enderecoOpt.isEmpty()) {
-        return new ResponseEntity<>("Endereço não encontrado", HttpStatus.NOT_FOUND);
-    }
-
-    Endereco endereco = enderecoOpt.get();
-    endereco.setRua(enderecoAtualizado.getRua());
-    endereco.setNumero(enderecoAtualizado.getNumero());
-    endereco.setBairro(enderecoAtualizado.getBairro());
-    endereco.setCidade(enderecoAtualizado.getCidade());
-    endereco.setEstado(enderecoAtualizado.getEstado());
-    endereco.setCep(enderecoAtualizado.getCep());
-
-    this.clienteRepository.save(cliente);
-
-    return new ResponseEntity<>(cliente, HttpStatus.OK);
-}
-@DeleteMapping("{id}/enderecos/{enderecoId}")
-public ResponseEntity<Object> removeEndereco(@PathVariable("id") int id, @PathVariable("enderecoId") int enderecoId) {
-    Optional<Cliente> clienteOpt = this.clienteRepository.findById(id);
-
-    if (clienteOpt.isEmpty()) {
-        return new ResponseEntity<>("Cliente não encontrado", HttpStatus.NOT_FOUND);
-    }
-
-    Cliente cliente = clienteOpt.get();
-    boolean removed = cliente.getEnderecos().removeIf(endereco -> endereco.getId() == enderecoId);
-
-    if (!removed) {
-        return new ResponseEntity<>("Endereço não encontrado", HttpStatus.NOT_FOUND);
-    }
-
-    this.clienteRepository.save(cliente);
-    return new ResponseEntity<>(cliente, HttpStatus.OK);
-}
-
 }

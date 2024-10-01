@@ -64,6 +64,17 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+    	<groupId>com.fasterxml.jackson.datatype</groupId>
+    	<artifactId>jackson-datatype-jsr310</artifactId>
+		<dependency>
+   		 <groupId>mysql</groupId>
+    	<artifactId>mysql-connector-java</artifactId>
+    <version>8.0.33</version> <!-- Verifique a versão mais recente -->
+</dependency>
+
+	</dependency>
+
 	</dependencies>
 
 	<build>

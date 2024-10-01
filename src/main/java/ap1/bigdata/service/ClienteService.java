@@ -1,107 +1,73 @@
 package ap1.bigdata.service;
 
+import ap1.bigdata.controller.dto.AtualizarClienteRequest;
+import ap1.bigdata.exception.ClienteNaoEncontradoException;
 import ap1.bigdata.model.Cliente;
-import ap1.bigdata.model.Endereco;
 import ap1.bigdata.repository.ClienteRepository;
-import ap1.bigdata.repository.EnderecoRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class ClienteService {
 
-    @Autowired
-    private ClienteRepository clienteRepository;
+    private final ClienteRepository clienteRepository;
 
-    @Autowired
-    private EnderecoRepository enderecoRepository;
+    public ClienteService(ClienteRepository clienteRepository) {
+        this.clienteRepository = clienteRepository;
+    }
 
-    public List<Cliente> getAllClientes() {
+    public List<Cliente> listar() {
         return clienteRepository.findAll();
     }
 
-    public Optional<Cliente> getClienteById(int id) {
-        return clienteRepository.findById(id);
+    public Cliente getCliente(int id) {
+        return clienteRepository.findById(id)
+                .orElseThrow(() -> new ClienteNaoEncontradoException("Cliente não encontrado " + id));
     }
 
-    public Cliente createCliente(Cliente cliente) {
-        // Verifica se o CPF já está cadastrado
+    public Cliente incluir(Cliente cliente) {
         if (clienteRepository.existsByCpf(cliente.getCpf())) {
-            throw new RuntimeException("CPF já cadastrado");
+            throw new IllegalArgumentException("CPF já cadastrado.");
         }
-
-        // Verifica se o e-mail já está cadastrado
         if (clienteRepository.existsByEmail(cliente.getEmail())) {
-            throw new RuntimeException("E-mail já cadastrado");
+            throw new IllegalArgumentException("E-mail já cadastrado.");
         }
-
+    
+        // Verifica se o cliente tem endereços e associa o cliente a cada um deles
+        if (cliente.getEnderecos() != null) {
+            cliente.getEnderecos().forEach(endereco -> endereco.setCliente(cliente));
+        }
+    
+        // Salva o cliente e seus endereços (relacionamento em cascata)
         return clienteRepository.save(cliente);
     }
+    
+    public Cliente atualizar(int id, AtualizarClienteRequest atualizarClienteRequest) {
+        Cliente cliente = clienteRepository.findById(id)
+            .orElseThrow(() -> new ClienteNaoEncontradoException("Cliente não encontrado"));
 
-    public Cliente updateCliente(Cliente cliente) {
-        return clienteRepository.save(cliente);
+        // Atualiza manualmente as propriedades que precisam ser alteradas
+        if (atualizarClienteRequest.getNome() != null) {
+            cliente.setNome(atualizarClienteRequest.getNome());
+        }
+        if (atualizarClienteRequest.getCpf() != null) {
+            cliente.setCpf(atualizarClienteRequest.getCpf());
+        }
+        if (atualizarClienteRequest.getTelefone() != null) {
+            cliente.setTelefone(atualizarClienteRequest.getTelefone());
+        }
+        if (atualizarClienteRequest.getEmail() != null) {
+            cliente.setEmail(atualizarClienteRequest.getEmail());
+        }
+        // Aqui você pode tratar endereços e outras relações de maneira específica.
+
+        clienteRepository.save(cliente);
+        return cliente;
     }
 
-    public void deleteCliente(int id) {
+    public void deletar(int id) {
         clienteRepository.deleteById(id);
-    }
-
-    public void addEndereco(int clienteId, Endereco endereco) {
-        Optional<Cliente> clienteOpt = clienteRepository.findById(clienteId);
-
-        if (clienteOpt.isEmpty()) {
-            throw new RuntimeException("Cliente não encontrado");
-        }
-
-        Cliente cliente = clienteOpt.get();
-        cliente.associarEndereco(endereco);
-        clienteRepository.save(cliente);
-    }
-
-    public void updateEndereco(int clienteId, int enderecoId, Endereco enderecoAtualizado) {
-        Optional<Cliente> clienteOpt = clienteRepository.findById(clienteId);
-
-        if (clienteOpt.isEmpty()) {
-            throw new RuntimeException("Cliente não encontrado");
-        }
-
-        Cliente cliente = clienteOpt.get();
-        Optional<Endereco> enderecoOpt = cliente.getEnderecos().stream()
-                .filter(e -> e.getId() == enderecoId)
-                .findFirst();
-
-        if (enderecoOpt.isEmpty()) {
-            throw new RuntimeException("Endereço não encontrado");
-        }
-
-        Endereco endereco = enderecoOpt.get();
-        endereco.setRua(enderecoAtualizado.getRua());
-        endereco.setNumero(enderecoAtualizado.getNumero());
-        endereco.setBairro(enderecoAtualizado.getBairro());
-        endereco.setCidade(enderecoAtualizado.getCidade());
-        endereco.setEstado(enderecoAtualizado.getEstado());
-        endereco.setCep(enderecoAtualizado.getCep());
-
-        clienteRepository.save(cliente);
-    }
-
-    public void removeEndereco(int clienteId, int enderecoId) {
-        Optional<Cliente> clienteOpt = clienteRepository.findById(clienteId);
-
-        if (clienteOpt.isEmpty()) {
-            throw new RuntimeException("Cliente não encontrado");
-        }
-
-        Cliente cliente = clienteOpt.get();
-        boolean removed = cliente.getEnderecos().removeIf(endereco -> endereco.getId() == enderecoId);
-
-        if (!removed) {
-            throw new RuntimeException("Endereço não encontrado");
-        }
-
-        clienteRepository.save(cliente);
     }
 }

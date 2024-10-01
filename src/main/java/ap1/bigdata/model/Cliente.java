@@ -1,10 +1,8 @@
 package ap1.bigdata.model;
 
-
-import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
-
-import java.util.Optional;
 
 
 import jakarta.persistence.*;
@@ -12,6 +10,7 @@ import jakarta.validation.constraints.*;
 
 @Entity
 public class Cliente {
+
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,7 +32,7 @@ public class Cliente {
     private String email;
 
     @Column(nullable = false)
-    private LocalDateTime dataNasc;
+    private LocalDate dataNasc;
 
     @Column
     @Pattern(
@@ -41,19 +40,21 @@ public class Cliente {
         message = "O telefone deve estar no formato (XX) XXXXX-XXXX."
     )
     private String telefone;
+    
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
+    private List<Endereco> enderecos = new ArrayList<>();
 
-    @OneToMany
-    @JoinColumn(referencedColumnName = "id", name = "cliente_id")
-    private List<Endereco> enderecos;
-
-    public void associarEndereco(Endereco endereco) {
-        this.enderecos.add(endereco);
+    public void adicionarEndereco(Endereco endereco) {
+        if (this.enderecos == null) {
+        this.enderecos = new ArrayList<>();
     }
-    // Construtor vazio
+    this.enderecos.add(endereco);
+
+}
+
     public Cliente() {}
 
-    // Construtor completo
-    public Cliente(String nome, String cpf, String email, LocalDateTime dataNasc, String telefone, List<Endereco> enderecos) {
+    public Cliente(String nome, String cpf, String email, LocalDate dataNasc, String telefone, List<Endereco> enderecos) {
         this.nome = nome;
         this.cpf = cpf;
         this.email = email;
@@ -62,9 +63,6 @@ public class Cliente {
         this.enderecos = enderecos;
     }
 
-    // MÉTODOS PARA CLIENTE
-
-    // Getters e Setters para os atributos do cliente
     public int getId() {
         return id;
     }
@@ -97,14 +95,13 @@ public class Cliente {
         this.email = email;
     }
 
-    public LocalDateTime getDataNasc() {
+    public LocalDate getDataNasc() {
         return dataNasc;
     }
 
-    public void setDataNasc(LocalDateTime dataNasc) {
+    public void setDataNasc(LocalDate dataNasc) {
         this.dataNasc = dataNasc;
     }
-
     public String getTelefone() {
         return telefone;
     }
@@ -113,52 +110,15 @@ public class Cliente {
         this.telefone = telefone;
     }
 
-    // MÉTODOS PARA ENDEREÇOS
-
-    // Retorna a lista de endereços associados ao cliente
+    // Getter para enderecos
     public List<Endereco> getEnderecos() {
         return enderecos;
     }
 
-    // Define a lista de endereços
+    // Setter para enderecos
     public void setEnderecos(List<Endereco> enderecos) {
         this.enderecos = enderecos;
     }
 
 
-    // Método para atualizar um endereço com base no ID do endereço
-    public boolean atualizarEndereco(int enderecoId, Endereco enderecoAtualizado) {
-        Optional<Endereco> enderecoOpt = this.enderecos.stream()
-                                                       .filter(e -> e.getId() == enderecoId)
-                                                       .findFirst();
-
-        if (enderecoOpt.isPresent()) {
-            Endereco endereco = enderecoOpt.get();
-            endereco.setRua(enderecoAtualizado.getRua());
-            endereco.setNumero(enderecoAtualizado.getNumero());
-            endereco.setBairro(enderecoAtualizado.getBairro());
-            endereco.setCidade(enderecoAtualizado.getCidade());
-            endereco.setEstado(enderecoAtualizado.getEstado());
-            endereco.setCep(enderecoAtualizado.getCep());
-            return true;
-        }
-        return false;
-    }
-
-    // Método para remover um endereço da lista baseado no ID
-    public boolean removerEndereco(int enderecoId) {
-        return this.enderecos.removeIf(endereco -> endereco.getId() == enderecoId);
-    }
-
-    // Método para buscar um endereço específico por ID
-    public Optional<Endereco> buscarEndereco(int enderecoId) {
-        return this.enderecos.stream()
-                             .filter(endereco -> endereco.getId() == enderecoId)
-                             .findFirst();
-    }
-
-    // Método para remover todos os endereços do cliente
-    public void removerTodosEnderecos() {
-        this.enderecos.clear();
-    }
 }

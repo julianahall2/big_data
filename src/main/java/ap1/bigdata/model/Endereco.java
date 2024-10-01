@@ -1,5 +1,7 @@
 package ap1.bigdata.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
 import lombok.Data;
@@ -11,6 +13,11 @@ public class Endereco {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
+
+    @JsonBackReference
+    @ManyToOne
+    @JoinColumn(name = "cliente_id", nullable = false)
+    private Cliente cliente;
 
     @Column(nullable = false)
     @NotBlank(message = "Rua não pode ser vazia")
@@ -41,10 +48,10 @@ public class Endereco {
     @Pattern(regexp = "\\d{5}-\\d{3}", message = "Formato de CEP inválido")
     private String cep;
 
-    // Construtor vazio
+    // Construtor padrão
     public Endereco() {}
 
-    // Construtor completo
+    // Construtor com parâmetros
     public Endereco(String rua, String numero, String bairro, String cidade, String estado, String cep) {
         this.rua = rua;
         this.numero = numero;
@@ -54,7 +61,7 @@ public class Endereco {
         this.cep = cep;
     }
 
-    // Método para atualizar o endereço completo
+    // Método para atualizar os dados do endereço
     public void atualizarEndereco(String rua, String numero, String bairro, String cidade, String estado, String cep) {
         this.rua = rua;
         this.numero = numero;
@@ -64,7 +71,7 @@ public class Endereco {
         this.cep = cep;
     }
 
-    // Getters e Setters (Lombok @Data já cuida disso, mas adicionados manualmente caso precise)
+    // Getters e setters
     public int getId() {
         return id;
     }

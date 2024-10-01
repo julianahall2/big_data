@@ -2,56 +2,50 @@ package ap1.bigdata.controller;
 
 import ap1.bigdata.model.Endereco;
 import ap1.bigdata.service.EnderecoService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-
 @RestController
 @RequestMapping("/enderecos")
 public class EnderecoController {
 
-    @Autowired
-    private EnderecoService enderecoService;
+    private final EnderecoService enderecoService;
 
-    @GetMapping
-    public ResponseEntity<List<Endereco>> getAllEnderecos() {
-        return new ResponseEntity<>(enderecoService.getAllEnderecos(), HttpStatus.OK);
+    public EnderecoController(EnderecoService enderecoService) {
+        this.enderecoService = enderecoService;
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Endereco> getEnderecoById(@PathVariable("id") int id) {
-        return enderecoService.getEnderecoById(id)
+    @GetMapping("/{clienteId}")
+    public ResponseEntity<List<Endereco>> listarPorCliente(@PathVariable("clienteId") int clienteId) {
+        List<Endereco> enderecos = enderecoService.getEnderecosByClienteId(clienteId);
+        return new ResponseEntity<>(enderecos, HttpStatus.OK);
+    }
+
+    @GetMapping("/{clienteId}/enderecos/{enderecoId}")
+    public ResponseEntity<Endereco> lerPorCliente(@PathVariable("clienteId") int clienteId, @PathVariable("enderecoId") int enderecoId) {
+        return enderecoService.getEnderecoByClienteIdAndEnderecoId(clienteId, enderecoId)
                 .map(endereco -> new ResponseEntity<>(endereco, HttpStatus.OK))
                 .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 
-    @PostMapping
-    public ResponseEntity<Endereco> createEndereco(@RequestBody Endereco endereco) {
-        return new ResponseEntity<>(enderecoService.createEndereco(endereco), HttpStatus.CREATED);
+    @PostMapping("/{clienteId}/enderecos")
+    public ResponseEntity<Endereco> incluir(@PathVariable("clienteId") int clienteId, @RequestBody Endereco endereco) {
+        Endereco novoEndereco = enderecoService.createEndereco(clienteId, endereco);
+        return new ResponseEntity<>(novoEndereco, HttpStatus.CREATED);
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<Endereco> updateEndereco(@PathVariable("id") int id, @RequestBody Endereco endereco) {
-        return enderecoService.getEnderecoById(id)
-                .map(enderecoExistente -> {
-                    enderecoExistente.setRua(endereco.getRua());
-                    enderecoExistente.setNumero(endereco.getNumero());
-                    enderecoExistente.setBairro(endereco.getBairro());
-                    enderecoExistente.setCidade(endereco.getCidade());
-                    enderecoExistente.setEstado(endereco.getEstado());
-                    enderecoExistente.setCep(endereco.getCep());
-                    return new ResponseEntity<>(enderecoService.updateEndereco(enderecoExistente), HttpStatus.OK);
-                })
-                .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    @PutMapping("/{clienteId}/enderecos/{enderecoId}")
+    public ResponseEntity<Endereco> atualizar(@PathVariable("clienteId") int clienteId, @PathVariable("enderecoId") int enderecoId, @RequestBody Endereco endereco) {
+        Endereco enderecoAtualizado = enderecoService.updateEndereco(clienteId, enderecoId, endereco);
+        return new ResponseEntity<>(enderecoAtualizado, HttpStatus.OK);
     }
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteEndereco(@PathVariable("id") int id) {
-        enderecoService.deleteEndereco(id);
+    @DeleteMapping("/{clienteId}/enderecos/{enderecoId}")
+    public ResponseEntity<Void> deletar(@PathVariable("clienteId") int clienteId, @PathVariable("enderecoId") int enderecoId) {
+        enderecoService.deleteEndereco(clienteId, enderecoId);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 }
